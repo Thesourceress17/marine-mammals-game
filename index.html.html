@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>משחק יונקי הים - איפה גר?</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .game-container {
+            display: flex;
+            min-height: 100vh;
+            padding: 20px;
+            gap: 30px;
+        }
+
+        /* תצוגת יונקים */
+        .animals-panel {
+            width: 25%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+        }
+
+        .help-text {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #856404;
+            text-align: center;
+            display: none;
+        }
+
+        .help-text.show {
+            display: block;
+        }
+
+        .animal-item {
+            width: 100%;
+            margin-bottom: 15px;
+            cursor: grab;
+            transition: transform 0.2s;
+            background: white;
+            border-radius: 15px;
+            padding: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .animal-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        .animal-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .animal-img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        /* אזורי הסביבות */
+        .environments-panel {
+            width: 75%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .environment-zone {
+            flex: 1;
+            border-radius: 20px;
+            padding: 20px;
+            position: relative;
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 4px solid transparent;
+            transition: all 0.3s;
+            height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .environment-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            z-index: 1;
+        }
+
+        .environment-zone.drag-over {
+            border-color: #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+            transform: scale(1.02);
+        }
+
+        .env-content {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            text-align: center;
+        }
+
+        .env-title {
+            font-size: 36px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 15px;
+            display: inline-block;
+        }
+
+        .animals-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            min-height: 100px;
+        }
+
+        .placed-animal {
+            position: relative;
+            width: 150px;
+            text-align: center;
+            animation: placeAnimal 0.5s ease-out;
+        }
+
+        @keyframes placeAnimal {
+            0% {
+                transform: scale(0) rotate(180deg);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        .placed-animal img {
+            width: 150px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            border: 3px solid white;
+        }
+
+        .animal-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            margin-top: 8px;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 10px;
+        }
+
+        /* הודעות */
+        .message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: white;
+            padding: 40px 60px;
+            border-radius: 25px;
+            font-size: 48px;
+            font-weight: bold;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            z-index: 1000;
+            animation: popMessage 0.6s ease-out;
+        }
+
+        @keyframes popMessage {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .message.success {
+            color: #27ae60;
+            border: 5px solid #27ae60;
+        }
+
+        .message.error {
+            color: #e74c3c;
+            border: 5px solid #e74c3c;
+        }
+
+        /* כפתור איפוס */
+        .reset-btn {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            padding: 15px 30px;
+            font-size: 20px;
+            font-weight: bold;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        .reset-btn:hover {
+            background: #c0392b;
+            transform: scale(1.1);
+        }
+
+        /* מונה התקדמות */
+        .progress {
+            position: fixed;
+            top: 20px;
+            right: 30px;
+            background: white;
+            padding: 15px 30px;
+            border-radius: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress">
+        <div>מיינתם: <span id="correct-count">0</span> / <span id="total-count">12</span></div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <!-- פאנל יונקים -->
+        <div class="animals-panel">
+            <div class="panel-title">🐬 גררו את היונקים 🐋</div>
+            <div id="animals-list"></div>
+        </div>
+
+        <!-- פאנל סביבות -->
+        <div class="environments-panel">
+            <!-- מים חמים -->
+            <div class="environment-zone" id="warm" data-env="warm">
+                <div class="env-content">
+                    <div class="env-title">☀️ מַיִם חַמִּים (טְרוֹפִּי)</div>
+                    <div class="animals-container" id="warm-container"></div>
+                </div>
+            </div>
+
+            <!-- מים קרים -->
+            <div class="environment-zone" id="cold" data-env="cold">
+                <div class="env-content">
+                    <div class="env-title">❄️ מַיִם קָרִים (קוֹטְבִּי)</div>
+                    <div class="animals-container" id="cold-container"></div>
+                </div>
+            </div>
+
+            <!-- אוקיינוס פתוח -->
+            <div class="environment-zone" id="adaptable" data-env="adaptable">
+                <div class="env-content">
+                    <div class="env-title">🌍 בְּכָל מָקוֹם (מִסְתַּגְּלִים)</div>
+                    <div class="animals-container" id="adaptable-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetGame()">🔄 התחל מחדש</button>
+
+    <script>
+        // נתוני יונקים
+        const animals = [
+            // מים חמים
+            { id: 'manatee', name: 'פָּרַת-יָם', img: 'https://i.ibb.co/9HW1Qjjt/manatee-parat-yam.png', env: 'warm' },
+            { id: 'pink-dolphin', name: 'דּוֹלְפִין וָרֹד', img: 'https://i.ibb.co/Tq2gSdjc/pink-dolphin.jpg', env: 'warm' },
+            { id: 'grampo', name: 'גְּרַמְפּוֹ', img: 'https://i.ibb.co/k6kF5XB0/grampo.jpg', env: 'warm' },
+            { id: 'ankoli', name: 'דּוֹלְפִינָן אַנְקוֹלִי', img: 'https://i.ibb.co/NdH5DxGm/dolpininan-ankoli.webp', env: 'warm' },
+            
+            // מים קרים
+            { id: 'beluga', name: 'בְּלוּגָה', img: 'https://i.ibb.co/SXdK2W4L/beluga.png', env: 'cold' },
+            { id: 'narwal', name: 'נַרְוָול', img: 'https://i.ibb.co/DD9Z9QvT/narwal.png', env: 'cold' },
+            { id: 'walrus', name: 'נִיבְתָן', img: 'https://i.ibb.co/zV10SqG4/vlarus.png', env: 'cold' },
+            { id: 'seal', name: 'כֶּלֶב-יָם מְנֻמָּר', img: 'https://i.ibb.co/nqvCd4r1/seal.png', env: 'cold' },
+            
+            // מסתגלים
+            { id: 'blue-whale', name: 'לַווְיָתָן כָּחֹל', img: 'https://i.ibb.co/847HdM4x/blue-whale.png', env: 'adaptable' },
+            { id: 'dolphin', name: 'דּוֹלְפִין', img: 'https://i.ibb.co/bMy8Mw9v/dolphin.png', env: 'adaptable' },
+            { id: 'orca', name: 'אוֹרְקָה', img: 'https://i.ibb.co/6cLs2jqk/orca.png', env: 'adaptable' },
+            { id: 'otter', name: 'לוֹטְרַת-יָם', img: 'https://i.ibb.co/Sw8WTzLS/sea-otter-lutra.png', env: 'adaptable' },
+            { id: 'sea-lion', name: 'אַרְיֵה-יָם', img: 'https://i.ibb.co/v6FNTdKk/sealion.png', env: 'adaptable' }
+        ];
+
+        // רקעי סביבות
+        const backgrounds = {
+            warm: 'https://i.ibb.co/23V8pm0r/Gemini-Generated-Image-qpw5ckqpw5ckqpw5.png',
+            cold: 'https://i.ibb.co/sdWhGmDs/Gemini-Generated-Image-nybrb4nybrb4nybr.png',
+            adaptable: 'https://i.ibb.co/7tZ2Vnsz/Gemini-Generated-Image-wuy4ahwuy4ahwuy4.png'
+        };
+
+        let correctCount = 0;
+        let draggedAnimal = null;
+
+        // אתחול המשחק
+        function initGame() {
+            // הוספת רקעים לסביבות
+            document.getElementById('warm').style.backgroundImage = `url('${backgrounds.warm}')`;
+            document.getElementById('cold').style.backgroundImage = `url('${backgrounds.cold}')`;
+            document.getElementById('adaptable').style.backgroundImage = `url('${backgrounds.adaptable}')`;
+
+            // יצירת רשימת יונקים
+            const animalsList = document.getElementById('animals-list');
+            animals.forEach(animal => {
+                const div = document.createElement('div');
+                div.className = 'animal-item';
+                div.draggable = true;
+                div.dataset.animalId = animal.id;
+                div.dataset.env = animal.env;
+                
+                const img = document.createElement('img');
+                img.src = animal.img;
+                img.alt = animal.name;
+                img.className = 'animal-img';
+                
+                // טיפול בשגיאה בטעינת תמונה
+                img.onerror = function() {
+                    console.error('Failed to load:', animal.img);
+                    this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="150"%3E%3Crect width="200" height="150" fill="%23ddd"/%3E%3Ctext x="50%25" y="50%25" font-size="16" text-anchor="middle" dy=".3em"%3E' + animal.name + '%3C/text%3E%3C/svg%3E';
+                };
+                
+                div.appendChild(img);
+                
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragend', handleDragEnd);
+                
+                animalsList.appendChild(div);
+            });
+
+            // הגדרת אזורי drop
+            document.querySelectorAll('.environment-zone').forEach(zone => {
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('drop', handleDrop);
+                zone.addEventListener('dragleave', handleDragLeave);
+            });
+
+            updateProgress();
+        }
+
+        function handleDragStart(e) {
+            this.classList.add('dragging');
+            draggedAnimal = this;
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+
+            if (!draggedAnimal) return;
+
+            const targetEnv = this.dataset.env;
+            const animalEnv = draggedAnimal.dataset.env;
+            const animalId = draggedAnimal.dataset.animalId;
+            const animalData = animals.find(a => a.id === animalId);
+
+            if (targetEnv === animalEnv) {
+                // נכון!
+                showMessage('כָּל הַכָּבוֹד! 🎉', 'success');
+                playSound('success');
+                
+                // הוספה לסביבה
+                const container = document.getElementById(`${targetEnv}-container`);
+                const placedDiv = document.createElement('div');
+                placedDiv.className = 'placed-animal';
+                placedDiv.innerHTML = `
+                    <img src="${animalData.img}" alt="${animalData.name}">
+                    <div class="animal-name">${animalData.name}</div>
+                `;
+                container.appendChild(placedDiv);
+
+                // הסרה מהרשימה
+                draggedAnimal.remove();
+                
+                correctCount++;
+                updateProgress();
+
+                // בדיקה אם סיימו
+                if (correctCount === animals.length) {
+                    setTimeout(() => {
+                        showMessage('כָּל הַכָּבוֹד! סִיַּמְתֶּם! 🏆', 'success');
+                        playSound('win');
+                    }, 500);
+                }
+            } else {
+                // לא נכון
+                showMessage('נַסּוּ שׁוּב! 🤔', 'error');
+                playSound('error');
+            }
+
+            draggedAnimal = null;
+        }
+
+        function showMessage(text, type) {
+            const existing = document.querySelector('.message');
+            if (existing) existing.remove();
+
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            document.body.appendChild(msg);
+
+            setTimeout(() => msg.remove(), 1500);
+        }
+
+        function playSound(type) {
+            // יצירת צלילים פשוטים
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            if (type === 'success') {
+                oscillator.frequency.value = 800;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } else if (type === 'error') {
+                oscillator.frequency.value = 200;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } else if (type === 'win') {
+                // מנגינה קצרה
+                [523, 659, 784].forEach((freq, i) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.value = freq;
+                    osc.start(audioContext.currentTime + i * 0.2);
+                    osc.stop(audioContext.currentTime + i * 0.2 + 0.3);
+                });
+            }
+        }
+
+        function updateProgress() {
+            document.getElementById('correct-count').textContent = correctCount;
+            document.getElementById('total-count').textContent = animals.length;
+            const percent = (correctCount / animals.length) * 100;
+            document.getElementById('progress-fill').style.width = percent + '%';
+        }
+
+        function resetGame() {
+            if (confirm('האם את/ה בטוח/ה שרוצה להתחיל מחדש?')) {
+                location.reload();
+            }
+        }
+
+        // אתחול בטעינת הדף
+        window.onload = initGame;
+    </script>
+</body>
+</html>
